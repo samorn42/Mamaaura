@@ -1,0 +1,13 @@
+{
+  "name": "Mamaaura",
+  "short_name": "Mamaaura",
+  "lang": "tr",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F6F5F3",
+  "theme_color": "#1D1D1B",
+  "icons": [
+    { "src": "simge-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "simge-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

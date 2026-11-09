@@ -1,0 +1,14 @@
+{
+  "name": "mamaaura",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Güzellik salonları için randevu, müşteri ve kasa yönetimi",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=22.13"
+  }
+}

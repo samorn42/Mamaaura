@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mamaaura | Giriş</title>
+<meta name="theme-color" content="#1D1D1B">
+<link rel="icon" href="simge-192.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="app.css">
+<script src="giris.js" defer></script>
+</head>
+<body>
+<div class="auth">
+  <div class="auth-card">
+    <div class="brand" role="img" aria-label="Mamaaura Care"></div>
+    <h1 id="a-title">Salonunuza giriş yapın</h1>
+    <form id="f-auth" novalidate>
+      <label id="l-salon" hidden>Salon adı<input id="a-salon" autocomplete="organization" placeholder="Örn. Güzellik Merkezi"></label>
+      <label id="l-name" hidden>Adınız<input id="a-name" autocomplete="name" placeholder="Ad Soyad"></label>
+      <label>E-posta<input id="a-email" type="email" autocomplete="email" placeholder="ornek@eposta.com"></label>
+      <label>Şifre<input id="a-pass" type="password" autocomplete="current-password" placeholder="En az 8 karakter"></label>
+      <p class="err" id="a-err" hidden></p>
+      <button class="btn primary" type="submit" id="a-submit">Giriş yap</button>
+    </form>
+    <p><span id="a-q">Hesabınız yok mu?</span> <button class="linkbtn" id="a-switch" type="button">Salonunuzu kaydedin</button></p>
+  </div>
+</div>
+</body>
+</html>

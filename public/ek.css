@@ -1,0 +1,32 @@
+/* Gerçek uygulamaya özel eklemeler: ek personel renkleri, hafta gezinme, giriş sayfası, ayarlar. */
+:root{--s4:#3B4FB8;--s4-bg:#DFE4F8;--s5:#7A3E9D;--s5-bg:#ECDDF4;--s6:#2F6B2A;--s6-bg:#DCEED9}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){--s4:#9AA9F5;--s4-bg:#1F2750;--s5:#CF9BEA;--s5-bg:#38214A;--s6:#8FD488;--s6-bg:#1D3A1B} }
+:root[data-theme="dark"]{--s4:#9AA9F5;--s4-bg:#1F2750;--s5:#CF9BEA;--s5-bg:#38214A;--s6:#8FD488;--s6-bg:#1D3A1B}
+html,body{margin:0}
+.ap.c1{background:var(--s1-bg)} .ap.c1 small{color:var(--s1)}
+.ap.c2{background:var(--s2-bg)} .ap.c2 small{color:var(--s2)}
+.ap.c3{background:var(--s3-bg)} .ap.c3 small{color:var(--s3)}
+.ap.c4{background:var(--s4-bg)} .ap.c4 small{color:var(--s4)}
+.ap.c5{background:var(--s5-bg)} .ap.c5 small{color:var(--s5)}
+.ap.c6{background:var(--s6-bg)} .ap.c6 small{color:var(--s6)}
+.daynav{display:flex;align-items:center;gap:6px;max-width:640px}
+.daynav .days{flex:1}
+.daynav .arrow{border:1px solid var(--line);background:var(--surface);border-radius:10px;width:34px;height:44px;font-size:18px;flex:none}
+.daynav .btn{flex:none}
+.side button{font-size:10.5px}
+.muted-row{opacity:.55}
+.inline{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.inline .btn,.inline .full{grid-column:1/-1}
+textarea{font:inherit;color:var(--ink);border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:10px 11px;width:100%;min-height:72px;resize:vertical}
+form select,form input[type=date]{min-height:43px}
+.banner{background:var(--accent-soft);color:var(--ink);border-radius:12px;padding:12px 14px;font-size:13.5px}
+.loading{padding:60px 0;text-align:center;color:var(--muted)}
+/* Giriş sayfası */
+.auth{min-height:100dvh;display:grid;place-items:center;padding:32px 16px;box-sizing:border-box}
+.auth-card{width:100%;max-width:400px;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:28px 24px;display:flex;flex-direction:column;gap:18px}
+.auth-card .brand{width:190px;margin:0 auto 4px}
+.auth-card h1{font-size:22px;text-align:center}
+.auth-card p{margin:0;text-align:center;color:var(--muted);font-size:13.5px}
+.auth-card form{grid-template-columns:1fr}
+.linkbtn{border:0;background:none;color:var(--accent);font-weight:600;padding:0;text-decoration:underline}
+@media (min-width:900px){ .side button{font-size:14px} }

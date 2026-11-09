@@ -42,12 +42,17 @@ create index if not exists ix_pay on public.payments(salon_id, date);
 create index if not exists ix_cust on public.customers(salon_id);
 create index if not exists ix_exp on public.expenses(salon_id, date);
 
-do $$ declare t text; begin
-  foreach t in array array['salons','members','staff','services','products','customers','appointments','payments','expenses'] loop
-    execute format('alter table public.%I enable row level security', t);
-    execute format('revoke all on table public.%I from anon, authenticated', t);
-  end loop;
-end $$;
+alter table public.salons enable row level security;
+alter table public.members enable row level security;
+alter table public.staff enable row level security;
+alter table public.services enable row level security;
+alter table public.products enable row level security;
+alter table public.customers enable row level security;
+alter table public.appointments enable row level security;
+alter table public.payments enable row level security;
+alter table public.expenses enable row level security;
+revoke all on table public.salons, public.members, public.staff, public.services, public.products,
+  public.customers, public.appointments, public.payments, public.expenses from anon, authenticated;
 
 -- Yardımcılar ---------------------------------------------------------------
 

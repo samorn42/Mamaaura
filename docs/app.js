@@ -1,5 +1,5 @@
 'use strict';
-// Mamaaura arayüzü. Veriyi /api/state adresinden alır, her işlemden sonra yeniden yükler.
+// Mamaaura arayüzü. Veriyi Supabase'deki 'durum' işlevinden alır, her işlemden sonra yeniden yükler.
 const $ = id => document.getElementById(id);
 const SLOT = 32; // takvimde yarım saatin piksel yüksekliği
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -36,25 +36,26 @@ const dot = c => `<i class="dot" style="background:var(--s${c})"></i>`;
 const tahsilat = (d, m) => sum(S.payments.filter(p => p.date === d && (m ? p.method === m : p.method === 'nakit' || p.method === 'kart')), p => p.amount);
 const kutular = a => a.map(x => `<div class="tile"><span class="k">${x[0]}</span><span class="v">${x[1]}</span><span class="s">${x[2]}</span></div>`).join('');
 
-async function api(method, url, body) {
-  let r;
-  try {
-    r = await fetch(url, { method, credentials: 'same-origin', headers: method === 'GET' ? {} : { 'Content-Type': 'application/json' }, body: method === 'GET' ? undefined : JSON.stringify(body || {}) });
-  } catch { throw new Error('Sunucuya ulaşılamadı. İnternet bağlantınızı kontrol edin.'); }
-  if (r.status === 401 && !url.startsWith('/api/log')) { location.href = '/giris.html'; throw new Error(''); }
-  const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j.error || 'İşlem yapılamadı. Tekrar deneyin.');
-  return j;
-}
+const rpc = (ad, p) => Bulut.rpc(ad, p);
 async function load() {
+  if (!Bulut.girisli()) { location.replace('giris.html'); return; }
   TODAY = iso(new Date());
-  S = await api('GET', `/api/state?from=${st.from}&today=${TODAY}`);
+  const p = { p_from: st.from, p_today: TODAY };
+  try { S = await rpc('durum', p); }
+  catch (e) {
+    if (e.oturumYok) { location.replace('giris.html'); return; }
+    if (e.message !== 'SALON_YOK') throw e;
+    // İlk giriş: kayıt sırasında not edilen salon adıyla salonu oluştur.
+    const k = Bulut.kullanici();
+    await rpc('salon_olustur', { p_salon: k.meta.salon || 'Salonum', p_ad: k.meta.name || String(k.email || 'Salon sahibi').split('@')[0] });
+    S = await rpc('durum', p);
+  }
   render();
 }
 // Bir işlemi yapar, veriyi yeniler, sonucu bildirir. Hata olursa mesajı gösterir ve false döner.
 async function yap(fn, mesaj, kapatSonra = true) {
   try { await fn(); await load(); if (kapatSonra) kapat(); if (mesaj) toast(mesaj); return true; }
-  catch (e) { if (e.message) toast(e.message); return false; }
+  catch (e) { if (e.oturumYok) location.replace('giris.html'); else toast(e.message); return false; }
 }
 
 function render() {
@@ -254,20 +255,20 @@ document.addEventListener('click', e => {
   if (d.week !== undefined) { st.from = d.week === '0' ? TODAY : addDays(st.from, 7 * Number(d.week)); st.date = st.from; return yap(async () => {}, '', false); }
   if (d.staff) { st.staff = d.staff === 'all' ? 'all' : Number(d.staff); return takvim(); }
   if (d.act === 'new') return yeni();
-  if (d.act === 'cikis') return api('POST', '/api/logout').finally(() => { location.href = '/giris.html'; });
+  if (d.act === 'cikis') return Bulut.cikis().finally(() => { location.href = 'giris.html'; });
   if (d.rid) return detay(Number(d.rid));
   if (d.cid) return musteriPenceresi(Number(d.cid));
   if (d.col) { const y = e.clientY - t.getBoundingClientRect().top; return yeni(S.salon.open_min + Math.floor(y / SLOT) * 30, Number(d.col)); }
-  if (d.set) return yap(() => api('POST', `/api/appointments/${d.id}/status`, { status: d.set }), '', false).then(ok => ok && detay(Number(d.id)));
-  if (d.iptal) { if (!d.emin) { t.dataset.emin = 1; t.textContent = 'Emin misiniz? Sil'; return; } return yap(() => api('DELETE', `/api/appointments/${d.iptal}`), 'Randevu silindi'); }
-  if (d.ode) return yap(() => api('POST', `/api/appointments/${d.id}/pay`, { method: d.ode, today: TODAY }), d.ode === 'paket' ? 'Paketten 1 seans düşüldü' : d.ode === 'veresiye' ? 'Borç olarak yazıldı' : 'Ödeme kasaya işlendi');
-  if (d.sat) { const u = S.products.find(x => x.id === Number(d.sat)); return yontemSec(`${u.name} · ${tl(u.price)}`, y => yap(() => api('POST', `/api/products/${u.id}/sell`, { method: y, today: TODAY }), 'Satış kasaya işlendi, stok düşüldü')); }
-  if (d.tahsil) { const p = S.payments.find(x => x.id === Number(d.tahsil)); return yontemSec(`${p.customer_name} · ${tl(p.amount)}`, y => yap(() => api('POST', `/api/payments/${p.id}/collect`, { method: y, today: TODAY }), 'Borç tahsil edildi')); }
+  if (d.set) return yap(() => rpc('randevu_durum', { p_id: Number(d.id), p_status: d.set }), '', false).then(ok => ok && detay(Number(d.id)));
+  if (d.iptal) { if (!d.emin) { t.dataset.emin = 1; t.textContent = 'Emin misiniz? Sil'; return; } return yap(() => rpc('randevu_sil', { p_id: Number(d.iptal) }), 'Randevu silindi'); }
+  if (d.ode) return yap(() => rpc('randevu_ode', { p_id: Number(d.id), p_method: d.ode, p_today: TODAY }), d.ode === 'paket' ? 'Paketten 1 seans düşüldü' : d.ode === 'veresiye' ? 'Borç olarak yazıldı' : 'Ödeme kasaya işlendi');
+  if (d.sat) { const u = S.products.find(x => x.id === Number(d.sat)); return yontemSec(`${u.name} · ${tl(u.price)}`, y => yap(() => rpc('urun_sat', { p_id: u.id, p_method: y, p_today: TODAY }), 'Satış kasaya işlendi, stok düşüldü')); }
+  if (d.tahsil) { const p = S.payments.find(x => x.id === Number(d.tahsil)); return yontemSec(`${p.customer_name} · ${tl(p.amount)}`, y => yap(() => rpc('borc_tahsil', { p_id: p.id, p_method: y, p_today: TODAY }), 'Borç tahsil edildi')); }
   if (d.pick && secimIslemi) return secimIslemi(d.pick);
-  if (d.gsil) return yap(() => api('DELETE', `/api/expenses/${d.gsil}`), 'Gider silindi');
+  if (d.gsil) return yap(() => rpc('gider_sil', { p_id: Number(d.gsil) }), 'Gider silindi');
   if (d.yeni) return katalogPenceresi(d.yeni);
   if (d.edit) { const [k, id] = d.edit.split(':'); return katalogPenceresi(k, Number(id)); }
-  if (d.aktif) { const [k, id, v] = d.aktif.split(':'); return yap(() => api('POST', `/api/${k}/${id}`, { active: Number(v) }), v === '1' ? 'Yeniden kullanıma alındı' : 'Kaldırıldı'); }
+  if (d.aktif) { const [k, id, v] = d.aktif.split(':'); return yap(() => rpc('katalog_aktif', { p_tur: k, p_id: Number(id), p_aktif: v === '1' }), v === '1' ? 'Yeniden kullanıma alındı' : 'Kaldırıldı'); }
   if (d.kopya) {
     const s = $('msg').textContent;
     (navigator.clipboard ? navigator.clipboard.writeText(s) : Promise.reject()).then(() => toast('Mesaj kopyalandı'))
@@ -284,8 +285,8 @@ document.addEventListener('submit', async e => {
     if (!gun) return err('Randevu gününü seçin.');
     const m = S.customers.find(x => lower(x.name) === lower(ad));
     try {
-      await api('POST', '/api/appointments', { customer_id: m ? m.id : undefined, customer_name: ad, phone: $('f-tel').value, service_id: Number($('f-h').value), staff_id: Number($('f-p').value), date: gun, start: Number($('f-s').value) });
-    } catch (x) { return err(x.message); }
+      await rpc('randevu_ekle', { p_customer_id: m ? m.id : null, p_customer_name: ad, p_phone: $('f-tel').value, p_service_id: Number($('f-h').value), p_staff_id: Number($('f-p').value), p_date: gun, p_start: Number($('f-s').value) });
+    } catch (x) { if (x.oturumYok) return location.replace('giris.html'); return err(x.message); }
     // Kaydedilen güne git; o gün görünen haftanın dışındaysa haftayı da değiştir.
     st.date = gun; if (gun < st.from || gun > addDays(st.from, 6)) st.from = gun;
     if (st.tab !== 'ozet' || gun !== TODAY) st.tab = 'takvim';
@@ -294,19 +295,19 @@ document.addEventListener('submit', async e => {
   if (f.id === 'f-gider') {
     const ad = $('g-ad').value.trim(), t = sayi($('g-tutar').value);
     if (!ad || !t) return toast('Gider adını ve tutarını yazın.');
-    if (await yap(() => api('POST', '/api/expenses', { date: st.date, name: ad, amount: t }), 'Gider eklendi', false)) { $('g-ad').value = ''; $('g-tutar').value = ''; }
+    if (await yap(() => rpc('gider_ekle', { p_date: st.date, p_name: ad, p_amount: t }), 'Gider eklendi', false)) { $('g-ad').value = ''; $('g-tutar').value = ''; }
   }
-  if (f.id === 'f-salon') { document.activeElement.blur(); return yap(() => api('POST', '/api/salon', { name: $('sl-ad').value, open_min: Number($('sl-ac').value), close_min: Number($('sl-kapa').value) }), 'Salon bilgileri kaydedildi', false); }
-  if (f.id === 'f-cus') return yap(() => api('POST', `/api/customers/${f.dataset.id}`, { name: $('c-ad').value, phone: $('c-tel').value, note: $('c-not').value }), 'Müşteri bilgileri kaydedildi');
+  if (f.id === 'f-salon') { document.activeElement.blur(); return yap(() => rpc('salon_guncelle', { p_name: $('sl-ad').value, p_open_min: Number($('sl-ac').value), p_close_min: Number($('sl-kapa').value) }), 'Salon bilgileri kaydedildi', false); }
+  if (f.id === 'f-cus') return yap(() => rpc('musteri_guncelle', { p_id: Number(f.dataset.id), p_name: $('c-ad').value, p_phone: $('c-tel').value, p_note: $('c-not').value }), 'Müşteri bilgileri kaydedildi');
   if (f.id === 'f-pkg') {
     const n = sayi($('p-n').value), fy = sayi($('p-f').value);
     if (!n || fy === null) return toast('Seans sayısını ve paket fiyatını yazın.');
-    return yap(() => api('POST', `/api/customers/${f.dataset.id}/package`, { service_id: Number($('p-h').value), total: n, price: fy, method: $('p-y').value, today: TODAY }), 'Paket satıldı, kasaya işlendi');
+    return yap(() => rpc('paket_sat', { p_id: Number(f.dataset.id), p_service_id: Number($('p-h').value), p_total: n, p_price: fy, p_method: $('p-y').value, p_today: TODAY }), 'Paket satıldı, kasaya işlendi');
   }
   if (f.id === 'f-kat') {
     const k = f.dataset.k, body = {};
     for (const [a, e2, t] of KATALOG[k].alanlar) { const v = $('k-' + a).value.trim(); body[a] = t === 'number' ? sayi(v) : v; if (body[a] === null || body[a] === '') return toast(`${e2} boş bırakılamaz.`); }
-    return yap(() => api('POST', `/api/${k}${f.dataset.id ? '/' + f.dataset.id : ''}`, body), 'Kaydedildi');
+    return yap(() => rpc('katalog_kaydet', { p_tur: k, p_id: f.dataset.id ? Number(f.dataset.id) : null, p_veri: body }), 'Kaydedildi');
   }
 });
 document.addEventListener('change', e => { if (e.target.id === 'f-ad') { const m = S.customers.find(x => lower(x.name) === lower(e.target.value)); if (m) $('f-tel').value = m.phone; } });
@@ -315,4 +316,4 @@ $('q').addEventListener('input', e => { st.q = e.target.value; musteri(); });
 // Sekmeye geri dönüldüğünde veriyi tazele (başka cihazdan yapılan değişiklikler görünsün).
 document.addEventListener('visibilitychange', () => { if (!document.hidden && S && $('backdrop').hidden) load().catch(() => {}); });
 
-load().catch(e => { if (e.message) $('loading').textContent = e.message; });
+load().catch(e => { $('loading').textContent = e.message; });

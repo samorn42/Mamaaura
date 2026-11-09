@@ -4,7 +4,7 @@ from pathlib import Path
 from PIL import Image
 
 src = Path(sys.argv[1]).read_text(encoding='utf8')
-pub = Path(__file__).resolve().parent.parent / 'public'
+pub = Path(__file__).resolve().parent.parent / "docs"
 css = re.search(r'<style>(.*?)</style>', src, re.S).group(1)
 uris = re.findall(r'url\("(data:image/png;base64,[^"]+)"\)', css)
 assert len(uris) == 2

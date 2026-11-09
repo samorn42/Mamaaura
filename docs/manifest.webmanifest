@@ -2,7 +2,7 @@
   "name": "Mamaaura",
   "short_name": "Mamaaura",
   "lang": "tr",
-  "start_url": "/",
+  "start_url": ".",
   "display": "standalone",
   "background_color": "#F6F5F3",
   "theme_color": "#1D1D1B",

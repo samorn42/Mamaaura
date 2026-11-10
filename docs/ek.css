@@ -48,3 +48,11 @@ a.btn.primary{color:var(--accent-ink)}
 .chart{margin-bottom:18px}
 #v-rapor .loading{padding:40px 0}
 .auth-card h1{margin:0}
+/* Sürüm 3: otomatik WhatsApp */
+.toggle{display:flex;align-items:center;gap:10px;font-weight:600;cursor:pointer}
+.toggle input{width:20px;height:20px;accent-color:var(--accent);flex:none}
+.toggle input:disabled+span{opacity:.5}
+.note.err{color:var(--bad)}
+#f-watest{grid-template-columns:minmax(0,1fr) auto}
+#f-watest .btn{grid-column:auto}
+@media (max-width:480px){ #f-watest{grid-template-columns:1fr} }

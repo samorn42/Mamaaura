@@ -59,6 +59,13 @@ function hatirlatmaMetni(a) {
     hizmet: svc(a.service_id).name.toLocaleLowerCase('tr-TR'), personel: stf(a.staff_id).name, salon: S.salon.name };
   return (S.salon.reminder_text || VARSAYILAN_METIN).replace(/\{(ad|adsoyad|gun|saat|hizmet|personel|salon)\}/g, (_, k) => deg[k]);
 }
+// Hatırlatmanın durumu: otomatik gönderim sonucu ya da elle gönderim işareti.
+function waRozet(a) {
+  if (a.wa_durum === 'gonderildi') return '<span class="badge ok">Otomatik gönderildi</span>';
+  if (a.wa_durum === 'gonderiliyor') return '<span class="badge n">Gönderiliyor</span>';
+  if (a.wa_durum === 'hata') return `<span class="badge bad" title="${esc(a.wa_hata)}">Gönderilemedi</span>`;
+  return a.reminded ? '<span class="badge ok">Gönderildi</span>' : '';
+}
 const waLink = (no, metin) => `https://wa.me/${no}${metin ? '?text=' + encodeURIComponent(metin) : ''}`;
 const WA_SVG = '<svg class="i" viewBox="0 0 24 24" style="width:17px;height:17px"><path d="M4 20l1.3-3.9A8 8 0 1 1 8 19z"/><path d="M9.2 8.6c.2 2.6 2.1 4.6 4.6 5.2l1-1.2 1.8.8-.3 1.3c-3.7.3-7.4-3.3-7-7l1.3-.3.8 1.8z" stroke-width="1.3"/></svg>';
 function hatirlatButonu(a, sinif = 'btn primary') {
@@ -146,11 +153,12 @@ function ozet() {
   // Yarının randevuları için hatırlatma listesi
   const yarin = addDays(TODAY, 1), h = S.appointments.filter(x => x.date === yarin && x.status === 'bekliyor');
   const kalan = h.filter(x => !x.reminded).length;
+  $('oz-hat-not').hidden = !S.salon.wa_otomatik;
   $('oz-hat-baslik').textContent = h.length ? `Yarın için hatırlatma (${kalan ? kalan + ' gönderilmedi' : 'hepsi gönderildi'})` : 'Yarın için hatırlatma';
   $('oz-hat').innerHTML = h.length ? h.map(x => {
     const m = cus(x.customer_id), b = hatirlatButonu(x, 'btn sm wa');
     return `<div class="row"><span class="tm">${saat(x.start)}</span><span class="g"><b>${esc(m.name)}</b><span class="sub">${esc(svc(x.service_id).name)} · ${esc(stf(x.staff_id).name)}</span>
-      ${x.reminded ? '<span class="tags"><span class="badge ok">Gönderildi</span></span>' : ''}</span>${b || `<button class="btn sm" data-cid="${m.id}">Telefon ekle</button>`}</div>`;
+      ${waRozet(x) ? `<span class="tags">${waRozet(x)}</span>` : ''}</span>${b || `<button class="btn sm" data-cid="${m.id}">Telefon ekle</button>`}</div>`;
   }).join('') : '<div class="empty">Yarın için bekleyen randevu yok.</div>';
   const c = [0, 1, 2, 3, 4, 5, 6].map(i => S.appointments.filter(x => x.date === addDays(TODAY, i)).length), mx = Math.max(1, ...c);
   $('oz-bars').innerHTML = c.map((n, i) => `<div class="bar${i === 0 ? ' on' : ''}"><b>${n}</b><i style="height:${Math.round(n / mx * 88) + 2}px"></i><span>${i === 0 ? 'Bugün' : parse(addDays(TODAY, i)).toLocaleDateString('tr-TR', { weekday: 'short' })}</span></div>`).join('');
@@ -246,7 +254,12 @@ function ayar() {
     const sec = (v) => { let o = ''; for (let m = 0; m <= 1440; m += 30) o += `<option value="${m}"${m === v ? ' selected' : ''}>${saat(m)}</option>`; return o; };
     $('sl-ad').value = S.salon.name; $('sl-ac').innerHTML = sec(S.salon.open_min); $('sl-kapa').innerHTML = sec(S.salon.close_min);
     $('sl-metin').value = S.salon.reminder_text || VARSAYILAN_METIN;
+    $('sl-tel').value = S.salon.phone || '';
   }
+  $('sl-wa').checked = S.salon.wa_otomatik; $('sl-wa').disabled = !S.wa_hazir;
+  $('wa-durum').textContent = !S.wa_hazir ? 'WhatsApp bağlantısı henüz kurulmadı. Kurulum tamamlanınca bu seçenek açılır.'
+    : S.salon.wa_otomatik ? 'Açık. Yarınki randevulara hatırlatma otomatik gönderiliyor.' : 'Kapalı. Hatırlatmaları randevudaki WhatsApp düğmesiyle elle gönderebilirsiniz.';
+  $('f-watest').hidden = !S.wa_hazir;
 }
 
 /* Raporlar */
@@ -317,8 +330,9 @@ function detay(id) {
     <button class="btn block" data-set="bekliyor" data-id="${id}">Geldi işaretini geri al</button>`;
   else if (a.status === 'gelmedi') ek = `<div class="acts"><button class="btn" data-set="bekliyor" data-id="${id}">Geri al</button><button class="btn danger" data-iptal="${id}">Randevuyu sil</button></div>`;
   ac(`<div class="head"><div class="row" style="padding:0"><span class="av">${esc(basHarf(m.name))}</span><span class="g"><h2>${esc(m.name)}</h2><span class="sub">${esc(m.phone || 'Telefon yok')}</span></span></div><button class="x" data-kapat="1" aria-label="Kapat">×</button></div>
-   <div class="tags">${badge(a.status)}${a.reminded && a.status === 'bekliyor' ? '<span class="badge ok">Hatırlatıldı</span>' : ''}${pk ? `<span class="badge n">${esc(paketEtiketi(m))} kaldı</span>` : ''}</div>
+   <div class="tags">${badge(a.status)}${a.status === 'bekliyor' ? waRozet(a) : ''}${pk ? `<span class="badge n">${esc(paketEtiketi(m))} kaldı</span>` : ''}</div>
    <dl class="kv"><dt>Zaman</dt><dd>${gunAd(a.date)}, ${saat(a.start)}–${saat(a.start + a.minutes)}</dd><dt>Hizmet</dt><dd>${esc(hz.name)} · ${tl(a.price)}</dd><dt>Personel</dt><dd>${esc(stf(a.staff_id).name)}</dd></dl>
+   ${a.wa_durum === 'hata' && a.status === 'bekliyor' ? `<div class="note err">Otomatik hatırlatma gönderilemedi: ${esc(a.wa_hata)}</div>` : ''}
    ${m.note ? `<div class="note">${esc(m.note)}</div>` : ''}${ek}`);
 }
 
@@ -458,7 +472,24 @@ document.addEventListener('submit', async e => {
   if (f.id === 'f-salon') {
     const metin = $('sl-metin').value.trim();
     document.activeElement.blur();
-    return yap(() => rpc('salon_guncelle', { p_name: $('sl-ad').value, p_open_min: Number($('sl-ac').value), p_close_min: Number($('sl-kapa').value), p_reminder_text: metin === VARSAYILAN_METIN ? '' : metin }), 'Salon bilgileri kaydedildi', false);
+    return yap(() => rpc('salon_guncelle', { p_name: $('sl-ad').value, p_open_min: Number($('sl-ac').value), p_close_min: Number($('sl-kapa').value), p_reminder_text: metin === VARSAYILAN_METIN ? '' : metin, p_phone: $('sl-tel').value, p_wa_otomatik: S.salon.wa_otomatik }), 'Salon bilgileri kaydedildi', false);
+  }
+  if (f.id === 'f-watest') {
+    const tel = $('wa-test-tel').value.trim(), out = $('wa-test-sonuc');
+    if (!tel) { out.textContent = 'Deneme mesajının gideceği telefonu yazın.'; return; }
+    $('wa-test-btn').disabled = true; out.textContent = 'Gönderiliyor…';
+    try {
+      const { istek } = await rpc('wa_test', { p_tel: tel });
+      // Meta'nın yanıtı birkaç saniye içinde gelir; 20 saniyeye kadar beklenir.
+      for (let i = 0; i < 10; i++) {
+        await new Promise(r => setTimeout(r, 2000));
+        const r = await rpc('wa_test_sonuc', { p_istek: istek });
+        if (r.bitti) { out.textContent = r.ok ? 'WhatsApp mesajı kabul etti. Telefonunuzu kontrol edin.' : 'Gönderilemedi: ' + r.hata; return; }
+      }
+      out.textContent = 'Yanıt gecikti. Birkaç dakika sonra telefonunuzu kontrol edin.';
+    } catch (x) { out.textContent = x.message; }
+    finally { $('wa-test-btn').disabled = false; }
+    return;
   }
   if (f.id === 'f-cus') return yap(() => rpc('musteri_guncelle', { p_id: Number(f.dataset.id), p_name: $('c-ad').value, p_phone: $('c-tel').value, p_note: $('c-not').value }), 'Müşteri bilgileri kaydedildi');
   if (f.id === 'f-pkg') {
@@ -472,7 +503,13 @@ document.addEventListener('submit', async e => {
     return yap(() => rpc('katalog_kaydet', { p_tur: k, p_id: f.dataset.id ? Number(f.dataset.id) : null, p_veri: body }), 'Kaydedildi');
   }
 });
-document.addEventListener('change', e => { if (e.target.id === 'f-ad') { const m = S.customers.find(x => lower(x.name) === lower(e.target.value)); if (m) $('f-tel').value = m.phone; } });
+document.addEventListener('change', e => {
+  if (e.target.id === 'sl-wa') {
+    const ac = e.target.checked;
+    return yap(() => rpc('salon_guncelle', { p_name: S.salon.name, p_open_min: S.salon.open_min, p_close_min: S.salon.close_min, p_reminder_text: S.salon.reminder_text, p_phone: $('sl-tel').value, p_wa_otomatik: ac }),
+      ac ? 'Otomatik hatırlatma açıldı' : 'Otomatik hatırlatma kapatıldı', false).then(ok => { if (!ok) e.target.checked = !ac; });
+  }
+  if (e.target.id === 'f-ad') { const m = S.customers.find(x => lower(x.name) === lower(e.target.value)); if (m) $('f-tel').value = m.phone; } });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') kapat(); });
 // Raporda fareyle gezinince çubuğun tutarını göster.
 document.addEventListener('pointerover', e => { const b = e.target.closest && e.target.closest('.cb'); if (b) $('rp-ipucu').textContent = b.dataset.ipucu; });

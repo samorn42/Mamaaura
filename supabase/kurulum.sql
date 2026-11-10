@@ -46,6 +46,17 @@ create table if not exists public.invites(
   code text primary key, salon_id bigint not null references public.salons(id), staff_id bigint not null references public.staff(id),
   expires_at timestamptz not null default now() + interval '7 days', used_by uuid);
 
+-- Sürüm 3: otomatik WhatsApp hatırlatma. Gönderim işlevleri supabase/whatsapp.sql dosyasındadır.
+alter table public.salons add column if not exists phone text not null default '';
+alter table public.salons add column if not exists wa_otomatik boolean not null default false;
+alter table public.appointments add column if not exists wa_durum text not null default '';
+alter table public.appointments add column if not exists wa_istek bigint;
+alter table public.appointments add column if not exists wa_hata text not null default '';
+-- Mamaaura'nın tek WhatsApp gönderici numarasının ayarı (tek satır). Erişim anahtarı Supabase Vault'ta durur.
+create table if not exists public.wa_ayar(
+  id int primary key default 1 check (id = 1), phone_number_id text not null default '',
+  api_version text not null default 'v23.0', template text not null default 'randevu_hatirlatma', language text not null default 'tr');
+
 -- Sürüm 1'den gelen salon sahiplerini, kayıtta oluşturulan personel kaydına bağla.
 update public.members m set staff_id = (select min(id) from public.staff s where s.salon_id = m.salon_id)
   where m.role = 'sahip' and m.staff_id is null;
@@ -65,8 +76,9 @@ alter table public.appointments enable row level security;
 alter table public.payments enable row level security;
 alter table public.expenses enable row level security;
 alter table public.invites enable row level security;
+alter table public.wa_ayar enable row level security;
 revoke all on table public.salons, public.members, public.staff, public.services, public.products,
-  public.customers, public.appointments, public.payments, public.expenses, public.invites from anon, authenticated;
+  public.customers, public.appointments, public.payments, public.expenses, public.invites, public.wa_ayar from anon, authenticated;
 
 -- Yardımcılar ---------------------------------------------------------------
 
@@ -138,7 +150,9 @@ begin
   sahip := me.role = 'sahip';
   -- Personel kasa, gider, ürün ve hesap bilgilerini görmez; bu alanlar boş döner.
   return jsonb_build_object(
-    'salon', (select jsonb_build_object('name', name, 'open_min', open_min, 'close_min', close_min, 'reminder_text', reminder_text) from salons where id = s),
+    'salon', (select jsonb_build_object('name', name, 'open_min', open_min, 'close_min', close_min, 'reminder_text', reminder_text,
+        'phone', phone, 'wa_otomatik', wa_otomatik) from salons where id = s),
+    'wa_hazir', exists(select 1 from wa_ayar where phone_number_id <> ''),
     'user', jsonb_build_object('name', me.name, 'email', coalesce(auth.jwt() ->> 'email', ''), 'role', me.role, 'staff_id', me.staff_id),
     'staff', coalesce((select jsonb_agg(to_jsonb(x) order by x.id) from (select id, name, commission, color, active from staff where salon_id = s) x), '[]'::jsonb),
     'services', coalesce((select jsonb_agg(to_jsonb(x) order by x.id) from (select id, name, minutes, price, active from services where salon_id = s) x), '[]'::jsonb),
@@ -156,7 +170,7 @@ begin
             where ap.customer_id = cu.id and ap.status = 'bekliyor' and ap.date >= p_today order by ap.date, ap.start limit 1) as next
         from customers cu where cu.salon_id = s) x), '[]'::jsonb),
     'appointments', coalesce((select jsonb_agg(to_jsonb(x) order by x.date, x.start, x.id) from (
-        select id, date, start, minutes, price, service_id, staff_id, customer_id, status, reminded from appointments
+        select id, date, start, minutes, price, service_id, staff_id, customer_id, status, reminded, wa_durum, wa_hata from appointments
         where salon_id = s and (date between p_from and f2 or date between p_today and t2)) x), '[]'::jsonb),
     'payments', case when not sahip then '[]'::jsonb else coalesce((select jsonb_agg(to_jsonb(x) order by x.id) from (
         select py.id, py.date, py.appointment_id, py.label, py.method, py.amount, ap.staff_id,
@@ -171,10 +185,16 @@ begin
 end $$;
 
 drop function if exists public.salon_guncelle(text, int, int);
-create or replace function public.salon_guncelle(p_name text, p_open_min int, p_close_min int, p_reminder_text text default '') returns jsonb language plpgsql security definer set search_path = public as $$
-declare s bigint := _sahip();
+drop function if exists public.salon_guncelle(text, int, int, text);
+create or replace function public.salon_guncelle(p_name text, p_open_min int, p_close_min int, p_reminder_text text default '',
+  p_phone text default '', p_wa_otomatik boolean default false) returns jsonb language plpgsql security definer set search_path = public as $$
+declare s bigint := _sahip(); tel text := _metin(p_phone, 'Salon telefonu', 30, false);
 begin
-  update salons set reminder_text = _metin(p_reminder_text, 'Hatırlatma metni', 500, false) where id = s;
+  if coalesce(p_wa_otomatik, false) then
+    if tel = '' then raise exception 'Otomatik WhatsApp hatırlatması için salon telefonunu yazın; mesajda müşteriye bu numara verilir.'; end if;
+    if not exists(select 1 from wa_ayar where phone_number_id <> '') then raise exception 'WhatsApp bağlantısı henüz kurulmadı.'; end if;
+  end if;
+  update salons set reminder_text = _metin(p_reminder_text, 'Hatırlatma metni', 500, false), phone = tel, wa_otomatik = coalesce(p_wa_otomatik, false) where id = s;
   perform _sayi(p_open_min, 'Açılış saati', 0, 1380); perform _sayi(p_close_min, 'Kapanış saati', 60, 1440);
   if p_open_min % 30 <> 0 or p_close_min % 30 <> 0 then raise exception 'Açılış ve kapanış saatleri yarım saatlik dilimlerde olmalı.'; end if;
   if p_close_min - p_open_min < 60 then raise exception 'Kapanış saati açılıştan en az 1 saat sonra olmalı.'; end if;

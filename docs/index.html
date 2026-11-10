@@ -52,7 +52,7 @@
     <div class="tiles" id="oz-tiles"></div>
     <div class="cols">
       <div class="panel"><h2>Sıradaki randevular</h2><div class="list" id="oz-agenda"></div>
-        <h2 id="oz-hat-baslik">Yarın için hatırlatma</h2><div class="list" id="oz-hat"></div></div>
+        <h2 id="oz-hat-baslik">Yarın için hatırlatma</h2><span class="sub" id="oz-hat-not" hidden>Otomatik hatırlatma açık: mesajlar 10:00–20:00 arasında saat başı gönderilir.</span><div class="list" id="oz-hat"></div></div>
       <div class="panel"><h2>Önümüzdeki 7 gün randevu sayısı</h2><div class="bars" id="oz-bars"></div>
         <h2>Dikkat gerektirenler</h2><div class="list" id="oz-uyari"></div></div>
     </div>
@@ -115,9 +115,19 @@
           <label class="full">Salon adı<input id="sl-ad"></label>
           <label>Açılış<select id="sl-ac"></select></label>
           <label>Kapanış<select id="sl-kapa"></select></label>
-          <label class="full">WhatsApp hatırlatma metni<textarea id="sl-metin" rows="4"></textarea>
+          <label class="full">Salon telefonu<input id="sl-tel" inputmode="tel" placeholder="0212 000 00 00"></label>
+          <label class="full">Elle gönderilen WhatsApp mesajının metni<textarea id="sl-metin" rows="4"></textarea>
             <span class="sub" style="font-weight:400">Kullanılabilir alanlar: {ad} {adsoyad} {gun} {saat} {hizmet} {personel} {salon}</span></label>
           <button class="btn" type="submit">Kaydet</button>
+        </form></div>
+      <div class="panel"><h2>Otomatik WhatsApp hatırlatma</h2>
+        <div class="note" id="wa-durum"></div>
+        <label class="toggle" for="sl-wa"><input type="checkbox" id="sl-wa"><span>Yarınki randevular için hatırlatmayı otomatik gönder</span></label>
+        <span class="sub">Mesajlar her gün 10:00–20:00 arasında saat başı, ertesi günün randevularına bir kez gönderilir. Telefonu olmayan müşterilere gönderilmez.</span>
+        <form id="f-watest" class="inline" novalidate>
+          <input id="wa-test-tel" inputmode="tel" placeholder="Deneme için telefon (05xx…)" aria-label="Deneme mesajı gönderilecek telefon">
+          <button class="btn" type="submit" id="wa-test-btn">Deneme mesajı gönder</button>
+          <p class="sub full" id="wa-test-sonuc" aria-live="polite"></p>
         </form></div>
     </div>
     <div class="panel" style="max-width:560px"><h2>Hesap</h2>

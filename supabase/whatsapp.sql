@@ -31,7 +31,7 @@ create or replace function public._json(t text) returns jsonb language plpgsql i
 begin return t::jsonb; exception when others then return null; end $$;
 
 -- Şablon mesajı için Meta'ya istek kuyruğa koyar; istek numarasını döner. Sonuç net._http_response tablosuna düşer.
--- Şablon gövdesindeki sıra: {{1}} ad, {{2}} tarih, {{3}} saat, {{4}} hizmet, {{5}} salon, {{6}} salon telefonu
+-- Şablon gövdesindeki sıra: {{1}} ad, {{2}} tarih, {{3}} saat, {{4}} salon, {{5}} hizmet, {{6}} salon telefonu
 create or replace function public._wa_istek(p_to text, p_params text[]) returns bigint language plpgsql security definer set search_path = public as $$
 declare a wa_ayar; tok text;
 begin
@@ -63,7 +63,7 @@ begin
     no := _wa_no(r.phone);
     continue when no is null; -- telefonu olmayan müşteri atlanır; numara eklenirse sonraki saatte gönderilir
     begin
-      istek := _wa_istek(no, array[split_part(r.musteri, ' ', 1), _tr_tarih(r.date), _saat(r.start), r.hizmet, r.salon, r.salon_tel]);
+      istek := _wa_istek(no, array[split_part(r.musteri, ' ', 1), _tr_tarih(r.date), _saat(r.start), r.salon, r.hizmet, r.salon_tel]);
       update appointments set wa_istek = istek, wa_durum = 'gonderiliyor', wa_hata = '', reminded = true where id = r.id;
       n := n + 1;
     exception when others then
@@ -94,7 +94,7 @@ begin
   if no is null then raise exception 'Telefon numarası geçersiz. 05xx xxx xx xx biçiminde yazın.'; end if;
   select * into sl from salons where id = s;
   return jsonb_build_object('istek', _wa_istek(no, array['Deneme', _tr_tarih((now() at time zone 'Europe/Istanbul')::date + 1), '10:00',
-    'Saç kesimi', sl.name, coalesce(nullif(sl.phone, ''), '0555 000 00 00')]));
+    sl.name, 'Saç kesimi', coalesce(nullif(sl.phone, ''), '0555 000 00 00')]));
 end $$;
 
 create or replace function public.wa_test_sonuc(p_istek bigint) returns jsonb language plpgsql security definer set search_path = public as $$

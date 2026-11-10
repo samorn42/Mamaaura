@@ -36,10 +36,10 @@ Tüm salonların mesajları Mamaaura'nın tek WhatsApp Business numarasından gi
 2. **Şablon:** WhatsApp Manager > Message templates altında `randevu_hatirlatma` adında, **Utility** kategorisinde, **Turkish (tr)** dilinde şu gövdeyle şablon oluşturun ve onaylanmasını bekleyin:
 
    ```
-   Merhaba {{1}}, {{2}} günü saat {{3}} için {{5}} salonunda {{4}} randevunuz bulunmaktadır. Randevunuzu değiştirmek ya da iptal etmek için lütfen salonu arayın: {{6}}. Bu mesaj otomatik olarak gönderilmiştir.
+   Merhaba {{1}}, {{2}} günü saat {{3}} için {{4}} salonunda {{5}} randevunuz bulunmaktadır. Randevunuzu değiştirmek ya da iptal etmek için lütfen salonu arayın: {{6}}. Bu mesaj otomatik olarak gönderilmiştir.
    ```
 
-   Sıra: {{1}} ad, {{2}} tarih, {{3}} saat, {{4}} hizmet, {{5}} salon, {{6}} salon telefonu.
+   Sıra: {{1}} ad, {{2}} tarih, {{3}} saat, {{4}} salon, {{5}} hizmet, {{6}} salon telefonu.
 3. **Veritabanı:** SQL Editor'de önce `supabase/kurulum.sql`, sonra `supabase/whatsapp.sql` dosyasını çalıştırın.
 4. **Bağlantı:** `supabase/whatsapp-ayar.sql` içeriğini SQL Editor'e yapıştırın, Phone number ID ile erişim anahtarını yazıp çalıştırın. Anahtar Supabase Vault'ta şifreli saklanır; bu bilgileri depoya yüklemeyin.
 5. **Salon:** Ayarlar > Otomatik WhatsApp hatırlatma bölümünden salon telefonunu yazıp seçeneği açın, "Deneme mesajı gönder" ile kontrol edin.

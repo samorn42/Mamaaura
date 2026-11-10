@@ -21,12 +21,15 @@
     <form id="f-auth" novalidate>
       <label id="l-salon" hidden>Salon adı<input id="a-salon" autocomplete="organization" placeholder="Örn. Güzellik Merkezi"></label>
       <label id="l-name" hidden>Adınız<input id="a-name" autocomplete="name" placeholder="Ad Soyad"></label>
+      <label id="l-davet" hidden>Davet kodu<input id="a-davet" autocomplete="off" autocapitalize="characters" placeholder="Salon sahibinden aldığınız kod"></label>
+      <p class="banner" id="a-salonbilgi" hidden></p>
       <label>E-posta<input id="a-email" type="email" autocomplete="email" placeholder="ornek@eposta.com"></label>
       <label>Şifre<input id="a-pass" type="password" autocomplete="current-password" placeholder="En az 8 karakter"></label>
       <p class="err" id="a-err" hidden></p>
       <button class="btn primary" type="submit" id="a-submit">Giriş yap</button>
     </form>
     <p><span id="a-q">Hesabınız yok mu?</span> <button class="linkbtn" id="a-switch" type="button">Salonunuzu kaydedin</button></p>
+    <p id="a-davetsatir"><span id="a-q2">Bir salonda mı çalışıyorsunuz?</span> <button class="linkbtn" id="a-davetbtn" type="button">Davet koduyla katılın</button></p>
   </div>
 </div>
 </body>

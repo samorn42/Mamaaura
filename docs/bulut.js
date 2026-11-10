@@ -72,6 +72,8 @@ const Bulut = (() => {
         return istek('/rest/v1/rpc/' + ad, p, t);
       }
     },
+    // Giriş gerektirmeyen işlev (ör. davet kodu kontrolü).
+    rpcAcik: (ad, p) => istek('/rest/v1/rpc/' + ad, p),
     // true: oturum açıldı. false: e-posta doğrulaması bekleniyor.
     async kayit(email, sifre, veri) {
       const j = await istek('/auth/v1/signup', { email, password: sifre, data: veri });
